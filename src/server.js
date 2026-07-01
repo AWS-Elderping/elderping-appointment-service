@@ -523,9 +523,55 @@ app.get('/hospitals', validateToken, async (req, res) => {
 
 // Verify DB structure and start server
 const PORT = process.env.PORT || 3000;
+
+async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hospitals (
+      id       SERIAL PRIMARY KEY,
+      name     VARCHAR(200) NOT NULL,
+      address  TEXT,
+      phone    VARCHAR(50),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS doctors (
+      id             SERIAL PRIMARY KEY,
+      name           VARCHAR(200) NOT NULL,
+      email          VARCHAR(255),
+      phone          VARCHAR(50),
+      hospital_id    INT REFERENCES hospitals(id),
+      specialization VARCHAR(150),
+      location       VARCHAR(200),
+      availability   TEXT,
+      created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS appointments (
+      id               SERIAL PRIMARY KEY,
+      elder_id         INT NOT NULL,
+      doctor_name      VARCHAR(200) NOT NULL,
+      clinic_name      VARCHAR(200),
+      scheduled_at     TIMESTAMP NOT NULL,
+      status           VARCHAR(30) DEFAULT 'SCHEDULED',
+      hospital_name    VARCHAR(200),
+      doctor_specialty VARCHAR(150),
+      notes            TEXT,
+      created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS appointments_elder_id_idx ON appointments (elder_id)');
+
+  console.log('Database schema ready (hospitals, doctors, appointments).');
+}
+
 async function start() {
   try {
     await pool.query('SELECT 1');
+    await initDb();
   } catch (err) {
     console.error('⚠️ DB Initialization failed:', err.message);
   }
